@@ -33,7 +33,6 @@ export class GeminiAdapter implements AIAdapter {
 
   constructor(apiKey: string, baseUrl?: string) {
     // If no key is provided, use a placeholder to avoid immediate constructor crash
-    // The call will fail later with a proper auth error if not updated.
     const safeKey = apiKey || 'MISSING_API_KEY';
     
     const options: any = { apiKey: safeKey };
@@ -139,10 +138,19 @@ export class GeminiAdapter implements AIAdapter {
          if (b64) return `data:image/jpeg;base64,${b64}`;
       }
 
-      // 2. Try Gemini 2.5/3 Image Generation
+      // 2. Try Gemini Image Generation (Nano Banana / Flash Image)
+      // This requires the correct model name (e.g. gemini-2.5-flash-image)
       const response = await this.client.models.generateContent({
         model: modelName,
-        contents: prompt,
+        contents: {
+          parts: [{ text: prompt }]
+        },
+        config: {
+          imageConfig: {
+             aspectRatio: "1:1",
+             imageSize: "1K" 
+          }
+        }
       });
       
       // Parse response for image
@@ -153,6 +161,15 @@ export class GeminiAdapter implements AIAdapter {
             if (part.inlineData && part.inlineData.data) {
                 return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
             }
+        }
+        // Fallback: Check if the model refused and sent text
+        if (candidates[0].content.parts[0]?.text) {
+            const text = candidates[0].content.parts[0].text;
+            console.warn("Model returned text instead of image:", text);
+            if (text.toLowerCase().includes("cannot generate images")) {
+                 throw new Error("This model (" + modelName + ") does not support image generation. Please select 'gemini-2.5-flash-image' or an Imagen model in Admin settings.");
+            }
+            throw new Error(`Model returned text instead of image: ${text.substring(0, 100)}...`);
         }
       }
       

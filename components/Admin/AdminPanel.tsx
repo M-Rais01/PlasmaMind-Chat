@@ -29,9 +29,22 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, user }) => {
   };
 
   const handleUpdate = (id: string, field: keyof AIProvider, value: any) => {
-    setProviders(prev => prev.map(p => 
-      p.id === id ? { ...p, [field]: value } : p
-    ));
+    setProviders(prev => prev.map(p => {
+      if (p.id !== id) return p;
+
+      // Smart suggestions for Model Name when category changes
+      if (field === 'category') {
+          let suggestedModel = p.model_name;
+          if (value === 'IMAGE') {
+              suggestedModel = 'gemini-2.5-flash-image';
+          } else if (value === 'CHAT') {
+              suggestedModel = 'gemini-2.5-flash';
+          }
+          return { ...p, [field]: value, model_name: suggestedModel };
+      }
+
+      return { ...p, [field]: value };
+    }));
   };
 
   const handleAddNew = () => {
@@ -80,42 +93,17 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose, user }) => {
         
         let errorMsg = "Unknown error";
         
-        // Robust Error Extraction
         if (typeof e === 'string') {
             errorMsg = e;
         } else if (e instanceof Error) {
             errorMsg = e.message;
         } else if (typeof e === 'object' && e !== null) {
-            // Supabase/Postgrest Error Object
             const msg = e.message || e.error_description || e.details;
-            if (msg) {
-                errorMsg = msg;
-                if (e.code) errorMsg += ` (Code: ${e.code})`;
-            } else {
-                try {
-                    errorMsg = JSON.stringify(e);
-                    if (errorMsg === '{}') errorMsg = "Error object is empty or not serializable.";
-                } catch {
-                    errorMsg = "Unserializable Error Object";
-                }
-            }
+            if (msg) errorMsg = msg;
+            else errorMsg = JSON.stringify(e);
         }
 
-        if (errorMsg.toLowerCase().includes("relation") || errorMsg.toLowerCase().includes("does not exist") || errorMsg.includes("42P01")) {
-             alert(
-                 "Database Setup Required:\n\n" +
-                 "The 'ai_providers' table is missing. You must run the SQL setup script in your Supabase Dashboard -> SQL Editor.\n\n" +
-                 "Error: " + errorMsg
-             );
-        } else if (errorMsg.toLowerCase().includes("column") || errorMsg.includes("42703")) {
-             alert(
-                 "Database Schema Mismatch:\n\n" +
-                 "The 'ai_providers' table is missing new columns (api_key/endpoint). Please update your table schema using the SQL Editor.\n\n" +
-                 "Error: " + errorMsg
-             );
-        } else {
-             alert(`Failed to save configuration:\n${errorMsg}`);
-        }
+        alert(`Failed to save configuration:\n${errorMsg}`);
     }
   };
 

@@ -96,11 +96,6 @@ export const chatService = {
   // --- AI Provider Management ---
 
   async getProviders(userId: string): Promise<AIProvider[]> {
-    const defaultProviders: AIProvider[] = [
-      { id: '1', name: 'Gemini 2.5 Flash', category: 'CHAT', model_name: 'gemini-2.5-flash', is_active: true },
-      { id: '2', name: 'Gemini 2.5 Flash Image', category: 'IMAGE', model_name: 'gemini-2.5-flash-image', is_active: true },
-    ];
-
     try {
         const { data, error } = await supabase
         .from('ai_providers')
@@ -109,18 +104,18 @@ export const chatService = {
         .order('created_at', { ascending: true });
         
         if (error) {
-            console.warn("Could not fetch custom providers (using defaults). details:", error.message);
-            return defaultProviders;
+            console.warn("Could not fetch custom providers:", error.message);
+            return [];
         }
 
         if (data && data.length > 0) {
             return data as AIProvider[];
         }
 
-        return defaultProviders;
+        return [];
     } catch (e) {
-        console.warn("Unexpected error fetching providers, using defaults:", e);
-        return defaultProviders;
+        console.warn("Unexpected error fetching providers:", e);
+        return [];
     }
   },
 
@@ -137,7 +132,6 @@ export const chatService = {
      };
 
      // Only attempt UPDATE if ID is present, not a temp ID, AND is a valid UUID.
-     // Default IDs like '1' or '2' will fall through to INSERT, effectively migrating them to DB.
      if (id && !id.startsWith('temp-') && isValidUUID(id)) {
          // Update
          const { user_id, ...updatePayload } = payload;

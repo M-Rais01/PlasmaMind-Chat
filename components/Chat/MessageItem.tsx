@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Message } from '../../types';
 import MarkdownRenderer from '../MarkdownRenderer';
-import { Bot, User, Trash2, FileText, ExternalLink } from 'lucide-react';
+import { Bot, User, Trash2, FileText, ExternalLink, Download, Copy, Check } from 'lucide-react';
 import clsx from 'clsx';
 
 interface MessageItemProps {
@@ -11,18 +11,14 @@ interface MessageItemProps {
 }
 
 const isImage = (url: string) => {
-    // Check for data URI image
     if (url.startsWith('data:image')) return true;
     if (url.startsWith('data:')) return false; 
-    
-    // Check for common image extensions
     const ext = url.split('.').pop()?.toLowerCase();
     return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tiff'].includes(ext || '');
 };
 
 const getFileName = (url: string) => {
     if (url.startsWith('data:')) {
-        // Try to guess from mime type if available
         const mime = url.substring(5, url.indexOf(';'));
         const ext = mime.split('/')[1] || 'file';
         return `file.${ext}`;
@@ -33,14 +29,31 @@ const getFileName = (url: string) => {
 
 export const MessageItem: React.FC<MessageItemProps> = ({ message, botName, onDelete }) => {
   const isUser = message.role === 'user';
+  const [copied, setCopied] = useState(false);
   
-  // Use provided botName or fallback to company default
   const displayName = isUser ? 'You' : (botName || 'PlasmaMind AI');
+
+  const handleCopy = () => {
+    if (message.content) {
+      navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleDownload = (url: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `plasmamind-image-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div
       className={clsx(
-        "group w-full text-foreground border-b border-border relative",
+        "group w-full text-foreground border-b border-border relative transition-colors",
         isUser ? "bg-transparent" : "bg-transparent"
       )}
     >
@@ -54,7 +67,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, botName, onDe
           </div>
         </div>
         
-        <div className="relative flex-1 overflow-hidden">
+        <div className="relative flex-1 overflow-hidden min-w-0">
           <div className="flex justify-between items-start mb-1">
             <div className="font-semibold text-sm opacity-90 flex items-center gap-2">
                 <span className={isUser ? "text-zinc-500 dark:text-zinc-400" : "text-primary"}>
@@ -62,17 +75,30 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, botName, onDe
                 </span>
             </div>
             
-            {/* Delete Button - Visible on Hover */}
-            <button 
-                onClick={() => onDelete(message.id)}
-                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-zinc-400 hover:text-red-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded"
-                title="Delete message"
-            >
-                <Trash2 size={14} />
-            </button>
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Copy Text Button - Available for both User and AI */}
+                {!message.image_url && message.content && (
+                   <button 
+                      onClick={handleCopy}
+                      className="p-1.5 text-zinc-400 hover:text-foreground hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"
+                      title="Copy message"
+                   >
+                       {copied ? <Check size={14} className="text-green-500"/> : <Copy size={14} />}
+                   </button>
+                )}
+
+                {/* Delete Button */}
+                <button 
+                    onClick={() => onDelete(message.id)}
+                    className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-zinc-200 dark:hover:bg-zinc-800 rounded transition-colors"
+                    title="Delete message"
+                >
+                    <Trash2 size={14} />
+                </button>
+            </div>
           </div>
           
-          {/* Attachments (Images & Files) */}
+          {/* User Attachments */}
           {message.attachments && message.attachments.length > 0 && (
             <div className="flex flex-wrap gap-3 mb-4 mt-1">
               {message.attachments.map((att, idx) => (
@@ -110,14 +136,21 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, botName, onDe
             </div>
           )}
           
-          {/* Assistant Generated Image */}
+          {/* AI Generated Image */}
           {message.image_url && (
-            <div className="mb-4">
+            <div className="mb-4 mt-2 relative group/gen-image inline-block">
               <img 
                 src={message.image_url} 
                 alt="Generated" 
-                className="rounded-lg max-w-sm border border-border shadow-lg" 
+                className="rounded-lg max-w-md w-full border border-border shadow-lg" 
               />
+              <button
+                onClick={() => handleDownload(message.image_url!)}
+                className="absolute top-2 right-2 p-2 bg-black/60 text-white rounded-lg opacity-0 group-hover/gen-image:opacity-100 transition-opacity hover:bg-black/80 shadow-sm backdrop-blur-sm"
+                title="Download Image"
+              >
+                <Download size={18} />
+              </button>
             </div>
           )}
 

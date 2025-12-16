@@ -8,7 +8,7 @@ import { SettingsModal } from './components/Settings/SettingsModal';
 import { chatService } from './services/chatService';
 import { getGeminiAdapter, GeminiAdapter } from './services/aiAdapter';
 import { Conversation, Message, UserProfile, AIProvider } from './types';
-import { Menu, Plus, BrainCircuit } from 'lucide-react';
+import { Menu, Plus, BrainCircuit, Settings } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { Session } from '@supabase/supabase-js';
 
@@ -77,8 +77,6 @@ export default function App() {
                 loadProviders(session.user.id);
             } else {
                 console.warn("Unauthorized admin access attempt");
-                // Optional: Redirect to home or show alert
-                // window.history.pushState({}, '', '/');
             }
         }
     }
@@ -110,10 +108,11 @@ export default function App() {
     try {
       const data = await chatService.getProviders(userId);
       setProviders(data);
-      // Select first active provider by default if not set
-      if (!selectedProviderId) {
+      // Select first active provider by default if not set or if current selection is invalid
+      if (!selectedProviderId || !data.find(p => p.id === selectedProviderId)) {
           const active = data.find(p => p.is_active);
           if (active) setSelectedProviderId(active.id);
+          else if (data.length > 0) setSelectedProviderId(data[0].id);
       }
     } catch (e) {
       console.error("Failed to load providers", e);
@@ -192,6 +191,13 @@ export default function App() {
   const handleSendMessage = async (text: string, providerId: string, attachmentFile?: File, attachmentPreview?: string) => {
     if (!session?.user) return;
     
+    // Identify Provider
+    const selectedProvider = providers.find(p => p.id === providerId);
+    if (!selectedProvider) {
+        alert("Please select a valid AI Model from the list, or configure one in the Admin panel.");
+        return;
+    }
+
     let convId = currentConversationId;
     
     // Create new chat if none selected
@@ -235,10 +241,8 @@ export default function App() {
     setMessages(prev => [...prev, userMsg]);
     setIsLoading(true);
 
-    // Identify Provider
-    const selectedProvider = providers.find(p => p.id === providerId) || providers[0];
-    const modelName = selectedProvider?.model_name || 'gemini-2.5-flash';
-    const mode = selectedProvider?.category || 'CHAT';
+    const modelName = selectedProvider.model_name || 'gemini-2.5-flash';
+    const mode = selectedProvider.category || 'CHAT';
     
     // Configure Adapter
     let adapter = getGeminiAdapter();
@@ -269,12 +273,12 @@ export default function App() {
         });
         setMessages(prev => prev.map(m => m.id === placeholderMsg.id ? imgMsg : m));
 
-      } catch (err) {
+      } catch (err: any) {
         console.error(err);
         await chatService.addMessage({
           conversation_id: convId,
           role: 'assistant',
-          content: "Sorry, I couldn't generate that image. Please check your model configuration."
+          content: `Failed to generate image. Error: ${err.message}`
         });
         loadMessages(convId);
       } finally {
@@ -320,7 +324,7 @@ export default function App() {
            console.error(err);
            setIsLoading(false);
            setMessages(prev => prev.map(m => 
-            m.id === assistantMsgId ? { ...m, content: streamContent + "\n\n[Error generating response. Check model configuration or API Key.]" } : m
+            m.id === assistantMsgId ? { ...m, content: streamContent + `\n\n[Error: ${err.message || 'Check configuration'}]` } : m
           ));
         },
         attachmentPreview // Pass base64 for Gemini processing
@@ -352,7 +356,6 @@ export default function App() {
           setCurrentConversationId(id);
           setShowAdmin(false);
           setShowSettings(false);
-          // Also reset URL if navigating back to chat
           if (window.location.pathname.includes('admin')) {
               window.history.pushState({}, '', '/');
           }
@@ -385,7 +388,6 @@ export default function App() {
              </div>
            </div>
            
-           {/* Replaced LogOut with New Chat */}
            <button onClick={handleNewChat} className="text-zinc-500 hover:text-foreground p-1 hover:bg-secondary rounded-lg">
              <Plus size={24} />
            </button>
@@ -395,6 +397,7 @@ export default function App() {
           <AdminPanel onClose={() => {
               setShowAdmin(false);
               window.history.pushState({}, '', '/');
+              loadProviders(session.user.id); // Reload in case admin changed things
           }} user={userProfile} />
         ) : showSettings ? (
             <SettingsModal 
@@ -412,7 +415,20 @@ export default function App() {
                     <BrainCircuit className="h-10 w-10 text-primary" />
                   </div>
                   <h2 className="text-3xl font-bold text-foreground mb-2">PlasmaMind Chat</h2>
-                  <p className="max-w-md">Your advanced AI assistant. Select a model below to start.</p>
+                  {providers.length === 0 ? (
+                      <div className="mt-4 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-600 dark:text-yellow-500 max-w-sm">
+                          <p className="font-semibold mb-2">No AI Models Configured</p>
+                          <p className="text-sm mb-3">Please go to the Admin panel to add your Gemini API Key and configure models.</p>
+                          <button 
+                            onClick={() => setShowAdmin(true)}
+                            className="text-sm bg-yellow-500 text-white px-3 py-1.5 rounded-md hover:bg-yellow-600 transition-colors"
+                          >
+                            Open Admin Panel
+                          </button>
+                      </div>
+                  ) : (
+                    <p className="max-w-md">Your advanced AI assistant. Select a model below to start.</p>
+                  )}
                 </div>
               ) : (
                 <div className="flex flex-col pb-4">
