@@ -127,8 +127,8 @@ export class GeminiAdapter implements AIAdapter {
 
   async generateImage(prompt: string, modelName: string): Promise<string> {
     try {
-      // 1. Try Imagen models
-      if (modelName.includes('imagen')) {
+      // 1. Try Imagen models (via generateImages)
+      if (modelName.toLowerCase().includes('imagen')) {
          const imgResponse = await this.client.models.generateImages({
             model: modelName,
             prompt: prompt,
@@ -136,10 +136,11 @@ export class GeminiAdapter implements AIAdapter {
          });
          const b64 = imgResponse.generatedImages?.[0]?.image?.imageBytes;
          if (b64) return `data:image/jpeg;base64,${b64}`;
+         throw new Error("Imagen model did not return image bytes.");
       }
 
-      // 2. Try Gemini Image Generation (Nano Banana / Flash Image)
-      // This requires the correct model name (e.g. gemini-2.5-flash-image)
+      // 2. Try Gemini Image Generation (via generateContent with imageConfig)
+      // e.g. gemini-2.5-flash-image
       const response = await this.client.models.generateContent({
         model: modelName,
         contents: {
@@ -154,26 +155,33 @@ export class GeminiAdapter implements AIAdapter {
       });
       
       // Parse response for image
+      // Safely access properties to satisfy TypeScript strict checks
       const candidates = response.candidates;
       if (candidates && candidates.length > 0) {
-        // Iterate parts to find inlineData
-        for (const part of candidates[0].content.parts) {
-            if (part.inlineData && part.inlineData.data) {
-                return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        const content = candidates[0].content;
+        if (content && content.parts) {
+            // Iterate parts to find inlineData
+            for (const part of content.parts) {
+                // Alias inlineData to ensure type narrowing persists
+                const inlineData = part.inlineData;
+                if (inlineData && inlineData.data) {
+                    return `data:${inlineData.mimeType};base64,${inlineData.data}`;
+                }
             }
-        }
-        // Fallback: Check if the model refused and sent text
-        if (candidates[0].content.parts[0]?.text) {
-            const text = candidates[0].content.parts[0].text;
-            console.warn("Model returned text instead of image:", text);
-            if (text.toLowerCase().includes("cannot generate images")) {
-                 throw new Error("This model (" + modelName + ") does not support image generation. Please select 'gemini-2.5-flash-image' or an Imagen model in Admin settings.");
+            // Fallback: Check if the model refused and sent text
+            const firstPart = content.parts[0];
+            if (firstPart && firstPart.text) {
+                const text = firstPart.text;
+                console.warn("Model returned text instead of image:", text);
+                if (text.toLowerCase().includes("cannot generate images") || text.toLowerCase().includes("unable to generate")) {
+                     throw new Error(`Model '${modelName}' declined image generation. Response: ${text}`);
+                }
+                throw new Error(`Model returned text instead of image: ${text.substring(0, 100)}...`);
             }
-            throw new Error(`Model returned text instead of image: ${text.substring(0, 100)}...`);
         }
       }
       
-      throw new Error("No image data found in model response.");
+      throw new Error("No image data found in model response. Please check if the selected model supports image generation.");
 
     } catch (error) {
       console.error("Gemini Image Gen Error:", error);

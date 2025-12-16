@@ -42,7 +42,6 @@ export const chatService = {
   },
 
   async deleteConversation(id: string): Promise<void> {
-    // Cascade delete of messages handled by DB FK usually, but explicit delete:
     const { error: msgError } = await supabase.from('messages').delete().eq('conversation_id', id);
     if (msgError) throw msgError;
 
@@ -79,7 +78,6 @@ export const chatService = {
     
     if (error) throw error;
 
-    // Update conversation timestamp
     await supabase.from('conversations').update({ updated_at: new Date().toISOString() }).eq('id', msg.conversation_id);
 
     return data as Message;
@@ -108,11 +106,7 @@ export const chatService = {
             return [];
         }
 
-        if (data && data.length > 0) {
-            return data as AIProvider[];
-        }
-
-        return [];
+        return data as AIProvider[] || [];
     } catch (e) {
         console.warn("Unexpected error fetching providers:", e);
         return [];
@@ -120,7 +114,6 @@ export const chatService = {
   },
 
   async saveProvider(provider: Omit<AIProvider, 'id'>, userId: string, id?: string): Promise<void> {
-     // Prepare payload ensuring empty strings become null for optional fields
      const payload = {
         name: provider.name,
         model_name: provider.model_name,
@@ -128,12 +121,10 @@ export const chatService = {
         is_active: provider.is_active,
         api_key: provider.api_key || null,
         endpoint: provider.endpoint || null,
-        user_id: userId // Ensure user_id is always present for inserts/security
+        user_id: userId
      };
 
-     // Only attempt UPDATE if ID is present, not a temp ID, AND is a valid UUID.
      if (id && !id.startsWith('temp-') && isValidUUID(id)) {
-         // Update
          const { user_id, ...updatePayload } = payload;
          
          const { error } = await supabase
@@ -142,7 +133,6 @@ export const chatService = {
            .eq('id', id);
          if (error) throw error;
      } else {
-         // Insert
          const { error } = await supabase
            .from('ai_providers')
            .insert(payload);
@@ -151,9 +141,7 @@ export const chatService = {
   },
 
   async deleteProvider(id: string): Promise<void> {
-    // Cannot delete a provider that isn't in the DB (invalid UUID)
     if (!isValidUUID(id)) return;
-
     const { error } = await supabase.from('ai_providers').delete().eq('id', id);
     if (error) throw error;
   }

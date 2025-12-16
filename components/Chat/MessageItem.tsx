@@ -142,7 +142,7 @@ export const MessageItem: React.FC<MessageItemProps> = ({ message, botName, onDe
               <img 
                 src={message.image_url} 
                 alt="Generated" 
-                className="rounded-lg max-w-md w-full border border-border shadow-lg" 
+                className="rounded-lg max-w-md w-full border border-border shadow-lg bg-black" 
               />
               <button
                 onClick={() => handleDownload(message.image_url!)}

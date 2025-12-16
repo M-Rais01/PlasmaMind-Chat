@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>PlasmaMind Chat</title>
-    <!-- Tailwind CSS is handled via PostCSS in build, but keeping CDN for quick preview/fallback -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -30,22 +29,21 @@
         --foreground: #09090b;
         --sidebar: #f8f9fa;
         --primary: #3b82f6;
-        --secondary: #f3f4f6; /* zinc-100 */
-        --accent: #e4e4e7; /* zinc-200 */
+        --secondary: #f3f4f6;
+        --accent: #e4e4e7;
         --border: #e4e4e7;
       }
 
       .dark {
-        --background: #09090b; /* zinc-950 */
-        --foreground: #fafafa; /* zinc-50 */
+        --background: #09090b;
+        --foreground: #fafafa;
         --sidebar: #020205;
         --primary: #3b82f6;
-        --secondary: #27272a; /* zinc-800 */
-        --accent: #3f3f46; /* zinc-700 */
+        --secondary: #27272a;
+        --accent: #3f3f46;
         --border: #27272a;
       }
 
-      /* Custom scrollbar for better aesthetics */
       ::-webkit-scrollbar {
         width: 8px;
         height: 8px;
@@ -69,26 +67,25 @@
   <script type="importmap">
 {
   "imports": {
-    "react/": "https://esm.sh/react@^19.2.3/",
     "react": "https://esm.sh/react@^19.2.3",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/",
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.87.3",
     "@google/genai": "https://esm.sh/@google/genai@^1.33.0",
     "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
+    "remark-gfm": "https://esm.sh/remark-gfm@^4.0.1",
+    "react-syntax-highlighter": "https://esm.sh/react-syntax-highlighter@^16.1.0",
+    "react-syntax-highlighter/": "https://esm.sh/react-syntax-highlighter@^16.1.0/",
     "lucide-react": "https://esm.sh/lucide-react@^0.561.0",
     "clsx": "https://esm.sh/clsx@^2.1.1",
     "vite": "https://esm.sh/vite@^7.3.0",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2",
-    "remark-gfm": "https://esm.sh/remark-gfm@^4.0.1",
-    "react-syntax-highlighter/": "https://esm.sh/react-syntax-highlighter@^16.1.0/",
-    "react-syntax-highlighter": "https://esm.sh/react-syntax-highlighter@^16.1.0"
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
   }
 }
 </script>
 </head>
   <body class="antialiased h-[100dvh] w-screen overflow-hidden transition-colors duration-300">
     <div id="root"></div>
-    <!-- Vite Entry Point -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
