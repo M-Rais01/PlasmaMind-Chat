@@ -1,0 +1,5 @@
+{
+  "name": "PlasmaMind Chat",
+  "description": "A full-stack ready AI chat application featuring Gemini integration, Supabase authentication, markdown rendering, and real-time streaming.",
+  "requestFramePermissions": []
+}
